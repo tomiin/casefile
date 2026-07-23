@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — Provenance trail (demo 3)</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8;
+    --bad:#f0616d; --badbg:#241016; --warn:#f5b544; --warnbg:#241d0e;
+    --ok:#3ecf8e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .app{width:100%;max-width:1040px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .scrub{height:3px;background:#0b0f17}
+  .scrub i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px;letter-spacing:.3px}
+  .brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--mut)}
+  .live{display:flex;align-items:center;gap:6px;color:var(--ok)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+  .rec{display:flex;align-items:center;gap:6px;color:var(--bad);font-family:var(--mono);letter-spacing:.5px}
+  .rec i{width:8px;height:8px;border-radius:50%;background:var(--bad);animation:blink 1.2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #3ecf8e66}70%{box-shadow:0 0 0 7px #3ecf8e00}100%{box-shadow:0 0 0 0 #3ecf8e00}}
+  @keyframes blink{50%{opacity:.25}}
+  .body{padding:18px 20px}
+  /* item banner */
+  .item{display:flex;align-items:center;gap:12px;border:1px solid #3a2f16;background:var(--warnbg);
+    border-radius:12px;padding:12px 14px;margin-bottom:16px}
+  .item .ic{width:38px;height:38px;border-radius:9px;background:#2a2110;border:1px solid #4a3a18;
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .item .nm{font-size:14px;font-weight:500}
+  .item .sr{font-family:var(--mono);font-size:12px;color:#e9c07a}
+  .item .tag{margin-left:auto;font-size:11px;font-family:var(--mono);color:#e9c07a;
+    background:#2a2110;border:1px solid #4a3a18;border-radius:20px;padding:4px 10px}
+  .lbl{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);margin:0 0 14px}
+  /* trail */
+  .trail{position:relative;padding-left:26px}
+  .trail::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .hop{position:relative;margin-bottom:15px;opacity:0;transform:translateX(-7px);transition:.35s}
+  .hop.show{opacity:1;transform:none}
+  .hop .dot{position:absolute;left:-22px;top:2px;width:14px;height:14px;border-radius:50%;
+    background:var(--panel);border:2px solid var(--accent)}
+  .hop.origin .dot{border-color:var(--bad);background:var(--badbg);animation:blink 1.1s infinite}
+  .hop .tm{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .hop .who{font-size:14px}
+  .hop .how{font-size:12px;color:var(--mut)}
+  .hop.origin .who{color:#f6a3ac}
+  /* fork */
+  .fork{margin:2px 0 15px 26px;opacity:0;transition:.4s}
+  .fork.show{opacity:1}
+  .fork .warn{font-family:var(--mono);font-size:12px;color:#f6a3ac;margin-bottom:9px;display:flex;align-items:center;gap:7px}
+  .chips{display:flex;gap:12px;flex-wrap:wrap}
+  .chip{border:1px solid #47222a;background:var(--badbg);border-radius:10px;padding:9px 12px}
+  .chip .s{font-family:var(--mono);font-size:12px;color:#f6a3ac}
+  .chip .h{font-size:11px;color:var(--mut);margin-top:3px}
+  .split{display:flex;align-items:center;color:var(--bad);font-size:18px;align-self:center}
+  /* verdict */
+  .verdict{margin-top:6px;border:1px solid #28405a;background:#0d1a26;border-radius:12px;
+    padding:12px 14px;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(8px);transition:.5s}
+  .verdict.show{opacity:1;transform:none}
+  .verdict .v{font-size:13px}.verdict .v b{color:#7ecbff}
+  .acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+  .btn{font-size:13px;padding:8px 13px;border-radius:8px;border:1px solid var(--line);
+    background:#111925;color:var(--mut);display:flex;align-items:center;gap:7px;cursor:default}
+  .btn.p{background:#0c2b2a;border-color:#1c5450;color:#7ef0e0}
+  .btn.d{border-color:#452027;color:#f0919a;background:#170c0f}
+  .btn.pulse{animation:btnp 1.4s infinite}
+  @keyframes btnp{0%,100%{box-shadow:0 0 0 0 #2dd4bf00}50%{box-shadow:0 0 0 4px #2dd4bf22}}
+  .cap-bar{border-top:1px solid var(--line);background:#0b1017;padding:11px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);min-height:44px}
+  .dot2{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+  .cap-bar.ok .dot2{background:var(--ok)}.cap-bar.warn .dot2{background:var(--warn)}
+  .cap-bar.bad .dot2{background:var(--bad);animation:blink 1s infinite}.cap-bar.done .dot2{background:var(--accent)}
+  .fade{transition:opacity .7s}.fade.out{opacity:0}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="scrub"><i id="scrub"></i></div>
+    <div class="top">
+      <div class="brand"><div class="logo">◆</div><div><b>CASEFILE</b><span>provenance · chain of custody</span></div></div>
+      <div class="meta"><span>Los Santos RP · rank #1</span><span class="live"><i></i> LIVE</span><span class="rec"><i></i> DEMO LOOP</span></div>
+    </div>
+
+    <div class="body">
+      <div class="item">
+        <div class="ic">🔫</div>
+        <div><div class="nm">WEAPON_PISTOL</div><div class="sr">serial · pistol_9f2</div></div>
+        <div class="tag">flagged · tracing</div>
+      </div>
+
+      <p class="lbl">Chain of custody</p>
+      <div class="trail" id="trail"></div>
+      <div class="fork" id="fork">
+        <div class="warn">⚠ serial pistol_9f2 exists in 2 inventories at once — impossible</div>
+        <div class="chips">
+          <div class="chip"><div class="s">pistol_9f2</div><div class="h">held by Mike_L</div></div>
+          <div class="split">⇄</div>
+          <div class="chip"><div class="s">pistol_9f2</div><div class="h">held by BiggsY</div></div>
+        </div>
+      </div>
+
+      <div class="verdict" id="verdict">
+        <span>✓</span>
+        <span class="v"><b>Origin found:</b> Jayden_R spawned pistol_9f2 at 03:19 — 1 spawn, 2 copies in circulation. Dupe source confirmed.</span>
+      </div>
+
+      <div class="acts">
+        <div class="btn p" id="fixBtn">🩹 patch item &amp; remove copies</div>
+        <div class="btn">⟲ rollback affected holders</div>
+        <div class="btn d">⊘ ban source</div>
+      </div>
+    </div>
+
+    <div class="cap-bar" id="capBar"><span class="dot2"></span><span id="caption">Initializing…</span></div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const capBar=$('#capBar'),caption=$('#caption'),app=$('.app');
+
+const hops=[
+  {tm:'now',   who:'Mike_L',  how:'current holder'},
+  {tm:'03:41', who:'Dana_P',  how:'traded → Mike_L'},
+  {tm:'03:28', who:'Rob_T',   how:'sold → Dana_P'},
+  {tm:'03:19', who:'Jayden_R',how:'spawned this item', origin:true},
+];
+
+function say(t,s){caption.textContent=t;capBar.className='cap-bar '+s;}
+function render(){
+  $('#trail').innerHTML=hops.map(h=>
+    `<div class="hop${h.origin?' origin':''}" data-hop>
+       <span class="dot"></span>
+       <div class="tm">${h.tm}</div>
+       <div class="who">${h.who}</div>
+       <div class="how">${h.how}</div>
+     </div>`).join('');
+  $('#fork').classList.remove('show');
+  $('#verdict').classList.remove('show');
+  $('#fixBtn').classList.remove('pulse');
+  app.classList.remove('out');
+}
+function startScrub(dur){const s=$('#scrub');s.style.transition='none';s.style.width='0%';
+  requestAnimationFrame(()=>{s.style.transition=`width ${dur}ms linear`;s.style.width='100%';});}
+
+async function run(){
+  while(true){
+    render();
+    startScrub(15500);
+    say('Item flagged as duplicate — tracing chain of custody','warn');
+    await sleep(1300);
+
+    const nodes=$$('[data-hop]');
+    for(let i=0;i<nodes.length;i++){
+      if(i===nodes.length-1) say('Following the trail back to where it began…','warn');
+      nodes[i].classList.add('show');
+      await sleep(900);
+    }
+    await sleep(400);
+
+    say('Origin reached — checking serial integrity','bad');
+    $('#fork').classList.add('show');
+    await sleep(2000);
+
+    say('Duplicate source confirmed — one click to clean it up','done');
+    $('#verdict').classList.add('show');
+    $('#fixBtn').classList.add('pulse');
+    await sleep(3600);
+
+    app.classList.add('fade','out');
+    await sleep(1100);
+  }
+}
+run();
+</script>
+</body>
+</html>

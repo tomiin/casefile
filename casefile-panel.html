@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — Admin Panel (try it)</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8; --bad:#f0616d; --badbg:#241016;
+    --warn:#f5b544; --warnbg:#241d0e; --ok:#3ecf8e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;display:flex;justify-content:center;padding:22px}
+  .app{width:100%;max-width:1080px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px}.brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .badge{font-family:var(--mono);font-size:12px;color:var(--accent2)}
+  /* search bar */
+  .bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:13px 20px;border-bottom:1px solid var(--line);background:#0b1017}
+  .searchbox{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:#0c1119;border:1px solid #1a2331;border-radius:9px;padding:8px 11px}
+  .searchbox input{flex:1;background:none;border:none;outline:none;color:var(--txt);font-size:14px}
+  .searchbox .i{color:var(--dim)}
+  .chip{font-size:12px;font-family:var(--mono);padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:#131a25;color:var(--mut);cursor:pointer}
+  .chip.on{background:#0c2b2a;border-color:#1c5450;color:#7ef0e0}
+  /* layout */
+  .grid{display:grid;grid-template-columns:1fr 300px;min-height:460px}
+  .main{border-right:1px solid var(--line)}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--line)}
+  .hd h4{margin:0;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .hd .count{font-family:var(--mono);font-size:12px;color:var(--mut)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:left;color:var(--dim);font-size:11px;font-weight:400;padding:9px 16px;position:sticky;top:0;background:#0f1520}
+  tbody td{padding:9px 16px;border-top:1px solid var(--line)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#0d1420}
+  .tm{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  td.act .money{color:#9fe1cb}td.act .item{color:#e9c07a}td.act .admin{color:#f0919a}
+  .who{color:var(--txt)} .det{color:var(--mut)}
+  .rows{max-height:420px;overflow:auto}
+  .empty{padding:26px 16px;color:var(--dim);font-size:13px;text-align:center}
+  /* side */
+  .side{padding:14px 15px;display:flex;flex-direction:column;gap:16px}
+  .side h4{margin:0 0 10px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .case{border:1px solid #47222a;background:var(--badbg);border-radius:10px;padding:10px 12px;margin-bottom:9px;cursor:pointer}
+  .case:hover{border-color:#5a2730}
+  .case .r{display:flex;justify-content:space-between;align-items:center}
+  .case .nm{font-size:13px;color:#f6a3ac}
+  .case .rk{font-family:var(--mono);font-size:11px;color:#ff8a95}
+  .case .rs{font-size:11px;color:var(--mut);margin-top:4px}
+  /* inspector */
+  .insp{border:1px solid var(--line);background:var(--panel2);border-radius:11px;padding:12px 13px}
+  .insp .nm{font-size:15px;margin-bottom:2px}
+  .insp .sub{font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:10px}
+  .insp .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
+  .insp .row .k{color:var(--mut)} .insp .row .v{font-family:var(--mono)}
+  .insp .v.in{color:var(--ok)}.insp .v.out{color:var(--bad)}
+  .insp .badge2{display:inline-block;margin-top:9px;font-size:11px;font-family:var(--mono);padding:4px 9px;border-radius:6px}
+  .insp .badge2.risk{color:#f6a3ac;background:var(--badbg);border:1px solid #47222a}
+  .insp .badge2.clean{color:#9fe1cb;background:#0c2b2a;border:1px solid #1c5450}
+  .foot{border-top:1px solid var(--line);background:#0b1017;padding:11px 20px;font-size:12px;color:var(--dim);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .foot b{color:var(--mut);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="brand"><div class="logo">◆</div><div><b>Casefile</b><span>admin panel · Lite</span></div></div>
+      <div class="badge">◇ interactive — real search logic</div>
+    </div>
+
+    <div class="bar">
+      <div class="searchbox"><span class="i">⌕</span><input id="q" placeholder="search a player… (try: jay, mike, riot)" autocomplete="off"></div>
+      <div class="chip on" data-cat="">all</div>
+      <div class="chip" data-cat="money">money</div>
+      <div class="chip" data-cat="item">item</div>
+      <div class="chip" data-cat="admin">admin</div>
+    </div>
+
+    <div class="grid">
+      <div class="main">
+        <div class="hd"><h4>Activity log</h4><span class="count" id="count">—</span></div>
+        <div class="rows">
+          <table><thead><tr><th>Time</th><th>Player</th><th>Action</th></tr></thead>
+          <tbody id="rows"></tbody></table>
+          <div class="empty" id="empty" style="display:none">No matching events.</div>
+        </div>
+      </div>
+      <div class="side">
+        <div><h4>⚠ open cases</h4><div id="cases"></div></div>
+        <div><h4>inspect</h4><div class="insp" id="insp"><div class="nm">Click a player</div><div class="sub">row or case →</div></div></div>
+      </div>
+    </div>
+
+    <div class="foot"><b>This is the real Lite panel logic.</b> Search + filter run the same query engine as the tested Lua core, over sample server data. Click any row or case to inspect a player.</div>
+  </div>
+
+<script>
+// ---- engine (mirror of the tested Lua core) ----
+const W={high:40,med:20,low:10}, THRESHOLD=40, ITEM_MOVES={give_item:1,trade:1,sell:1,give:1};
+const store={events:[],assets:{},custody:[],cases:[],risk:{},rules:[
+  {type:'money_velocity',key:'money_velocity',window:3600,threshold:100000,severity:'high'},
+  {type:'off_hours',key:'off_hours',from_hour:2,to_hour:4,severity:'med'}]};
+function record(ev){ ev.id=store.events.length+1; store.events.push(ev);
+  if(ev.serial){ if(ev.action==='spawn_item'){ if(!store.assets[ev.serial])store.assets[ev.serial]={serial:ev.serial,origin_actor:ev.actor,origin_ts:ev.ts,spawns:0}; store.assets[ev.serial].spawns++; store.custody.push({serial:ev.serial,from:null,to:ev.target||ev.actor,action:'spawn',ts:ev.ts}); }
+    else if(ITEM_MOVES[ev.action]) store.custody.push({serial:ev.serial,from:ev.actor,to:ev.target,action:ev.action,ts:ev.ts}); } }
+function moneyOut(a,s,n){let x=0;for(const e of store.events)if(e.category==='money'&&e.action==='give_money'&&e.actor===a&&e.ts>=s&&e.ts<=n)x+=e.amount||0;return x;}
+function evaluate(ev,now){const t=[];for(const r of store.rules){
+  if(r.type==='money_velocity'&&ev.category==='money'&&ev.action==='give_money'){const s=moneyOut(ev.actor,now-r.window,now);if(s>=r.threshold)t.push({rule:r.key,actor:ev.actor,weight:W[r.severity],detail:'$'+s.toLocaleString()+' in 60m'});}
+  else if(r.type==='off_hours'&&ev.category==='money'){const h=new Date(ev.ts*1000).getUTCHours();if(h>=r.from_hour&&h<r.to_hour)t.push({rule:r.key,actor:ev.actor,weight:W[r.severity],detail:'off-hours'});}}return t;}
+function flag(trip){let r=store.risk[trip.actor];if(!r){r={score:0,reasons:[],case_id:null};store.risk[trip.actor]=r;}r.score=Math.min(100,r.score+trip.weight);r.reasons.push(trip);
+  if(r.case_id)store.cases.find(c=>c.id===r.case_id).risk=r.score;else if(r.score>=THRESHOLD){const c={id:store.cases.length+1,subject:trip.actor,risk:r.score,reasons:r.reasons};store.cases.push(c);r.case_id=c.id;}}
+function search(f){return store.events.filter(e=>(!f.actorLike||e.actor.toLowerCase().includes(f.actorLike))&&(!f.category||e.category===f.category)).slice().sort((a,b)=>b.ts-a.ts);}
+
+// ---- seed sample server data ----
+const T=Date.UTC(2026,0,5,2,10,0)/1000, D=Date.UTC(2026,0,5,14,0,0)/1000;
+const SEED=[
+  // benign daytime
+  {ts:D,     actor:'EMS_Kara', category:'admin', action:'revive', target:'Player12'},
+  {ts:D+300, actor:'TommyG', category:'money', action:'give_money', target:'Shop_247', amount:180},
+  {ts:D+600, actor:'Dana_P', category:'money', action:'give_money', target:'Mechanic', amount:350},
+  {ts:D+900, actor:'Shop_247', category:'item', action:'sell', target:'TommyG', serial:'food_x1'},
+  {ts:D+1200,actor:'Mike_L', category:'money', action:'give_money', target:'Shop_247', amount:12},
+  // Jayden laundering + dupe (off-hours)
+  {ts:T,     actor:'Jayden_R', category:'money', action:'give_money', target:'Mike_L', amount:50000},
+  {ts:T+900, actor:'Jayden_R', category:'money', action:'give_money', target:'Dana_P', amount:50000},
+  {ts:T+1800,actor:'Jayden_R', category:'money', action:'give_money', target:'Rob_T', amount:50000},
+  {ts:T+2000,actor:'Jayden_R', category:'item', action:'spawn_item', serial:'pistol_9f2'},
+  {ts:T+2100,actor:'Jayden_R', category:'item', action:'give_item', target:'Mike_L', serial:'pistol_9f2'},
+  {ts:T+2160,actor:'Jayden_R', category:'item', action:'give_item', target:'BiggsY', serial:'pistol_9f2'},
+  // Rogue admin RiotMod
+  {ts:T+300, actor:'RiotMod', category:'money', action:'give_money', target:'RiotMod', amount:250000},
+  {ts:T+360, actor:'RiotMod', category:'money', action:'give_money', target:'BiggsY', amount:250000},
+  {ts:T+420, actor:'RiotMod', category:'admin', action:'ban', target:'TommyG'},
+  {ts:T+480, actor:'RiotMod', category:'admin', action:'clear_logs'},
+  // more benign
+  {ts:D+1500,actor:'Rob_T', category:'admin', action:'clock_in'},
+  {ts:D+1800,actor:'Mike_L', category:'item', action:'trade', target:'Dana_P', serial:'watch_a2'},
+];
+SEED.forEach(e=>{ record(e); for(const t of evaluate(e,e.ts)) flag(t); });
+
+// ---- UI ----
+const $=s=>document.querySelector(s);
+let cat='', q='';
+function catClass(c){return c;}
+function render(){
+  const res=search({actorLike:q.toLowerCase(), category:cat});
+  $('#count').textContent=res.length+' event'+(res.length===1?'':'s');
+  const tb=$('#rows'); tb.innerHTML='';
+  $('#empty').style.display=res.length?'none':'block';
+  for(const e of res){
+    const t=new Date(e.ts*1000).toISOString().substr(11,5);
+    let det;
+    if(e.category==='money') det=`gave <span class="money">$${(e.amount||0).toLocaleString()}</span> → ${e.target}`;
+    else if(e.category==='item') det=`<span class="item">${e.action.replace('_',' ')}</span> ${e.serial||''}${e.target?(' → '+e.target):''}`;
+    else det=`<span class="admin">${e.action.replace('_',' ')}</span>${e.target?(' '+e.target):''}`;
+    const tr=document.createElement('tr'); tr.innerHTML=`<td class="tm">${t}</td><td class="who">${e.actor}</td><td class="act det">${det}</td>`;
+    tr.addEventListener('click',()=>inspect(e.actor));
+    tb.appendChild(tr);
+  }
+}
+function renderCases(){
+  const el=$('#cases');
+  if(!store.cases.length){ el.innerHTML='<div style="font-size:12px;color:var(--dim)">none</div>'; return; }
+  el.innerHTML=store.cases.map(c=>{
+    const reasons=[...new Set(c.reasons.map(r=>r.rule))].join(', ');
+    return `<div class="case" data-s="${c.subject}"><div class="r"><span class="nm">${c.subject}</span><span class="rk">risk ${c.risk}</span></div><div class="rs">${reasons}</div></div>`;
+  }).join('');
+  el.querySelectorAll('.case').forEach(d=>d.addEventListener('click',()=>{ q=d.getAttribute('data-s'); $('#q').value=q; inspect(q); render(); }));
+}
+function inspect(name){
+  const evs=store.events.filter(e=>e.actor===name);
+  let inSum=0,outSum=0;
+  for(const e of store.events){ if(e.category==='money'){ if(e.actor===name)outSum+=e.amount||0; if(e.target===name)inSum+=e.amount||0; } }
+  const r=store.risk[name], open=store.cases.find(c=>c.subject===name);
+  const f=v=>'$'+v.toLocaleString();
+  $('#insp').innerHTML=
+    `<div class="nm">${name}</div><div class="sub">${evs.length} events on record</div>
+     <div class="row"><span class="k">received</span><span class="v in">${f(inSum)}</span></div>
+     <div class="row"><span class="k">sent</span><span class="v out">${f(outSum)}</span></div>
+     <div class="row"><span class="k">risk score</span><span class="v">${r?r.score:0}</span></div>
+     ${open?'<span class="badge2 risk">◆ case open — '+[...new Set(open.reasons.map(x=>x.rule))].join(', ')+'</span>'
+           :'<span class="badge2 clean">✓ no case — normal activity</span>'}`;
+}
+$('#q').addEventListener('input',e=>{ q=e.target.value.trim(); render(); });
+document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); ch.classList.add('on');
+  cat=ch.getAttribute('data-cat'); render();
+}));
+renderCases(); render();
+</script>
+</body>
+</html>

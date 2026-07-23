@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — Live Engine Test</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8; --bad:#f0616d; --badbg:#241016;
+    --warn:#f5b544; --ok:#3ecf8e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;justify-content:center;padding:22px}
+  .app{width:100%;max-width:1080px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px}.brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .badge{font-family:var(--mono);font-size:12px;color:var(--accent2)}
+  .controls{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);background:#0b1017}
+  button{font-family:inherit;font-size:13px;padding:8px 13px;border-radius:8px;border:1px solid var(--line);
+    background:#131a25;color:var(--txt);cursor:pointer}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121a;font-weight:600;border:none}
+  button:disabled{opacity:.45;cursor:default}
+  .controls .sp{flex:1}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;min-height:440px}
+  .col{padding:14px 16px;border-right:1px solid var(--line)}
+  .col:last-child{border-right:none}
+  h4{margin:0 0 11px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  /* feed */
+  #feed{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow:auto}
+  .ev{display:flex;gap:9px;font-size:12.5px;padding:7px 9px;border-radius:7px;background:#0c1119;border:1px solid #161d29;animation:sl .3s}
+  .ev .t{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:44px}
+  .ev.money .x{color:#9fe1cb}.ev.item .x{color:#e9c07a}.ev .x{color:var(--mut)}
+  @keyframes sl{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  /* actors / risk */
+  .actor{margin-bottom:12px}
+  .actor .r{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .actor .r .sc{font-family:var(--mono)}
+  .bar{height:9px;background:#0c1119;border:1px solid #161d29;border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s ease,background .3s;border-radius:6px}
+  .bar.hot i{background:var(--bad)}
+  .case{margin-top:6px;font-size:11px;font-family:var(--mono);color:#f6a3ac;background:var(--badbg);
+    border:1px solid #47222a;border-radius:6px;padding:4px 8px;display:none}
+  .case.show{display:inline-block;animation:sl .3s}
+  .dupe{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:11px 12px;font-size:12.5px;display:none}
+  .dupe.show{display:block;animation:sl .3s}
+  .dupe .hd{color:#f6a3ac;font-family:var(--mono);font-size:12px;margin-bottom:7px}
+  .dupe .chain{font-family:var(--mono);font-size:11px;color:var(--mut);line-height:1.7}
+  .dupe .chain b{color:var(--accent)}
+  /* checks */
+  #checks{display:flex;flex-direction:column;gap:6px}
+  .chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--dim);transition:.3s}
+  .chk .bx{width:15px;height:15px;border-radius:4px;border:1px solid #2c3a50;flex:none;margin-top:1px;
+    display:flex;align-items:center;justify-content:center;font-size:11px;color:#04121a}
+  .chk.ok{color:var(--txt)}.chk.ok .bx{background:var(--ok);border-color:var(--ok)}
+  .result{margin-top:12px;font-family:var(--mono);font-size:14px;padding:9px 11px;border-radius:8px;text-align:center;display:none}
+  .result.show{display:block;animation:sl .3s}
+  .result.pass{color:#04121a;background:var(--ok)}
+  /* sandbox */
+  .sandbox{border-top:1px solid var(--line);background:#0b1017;padding:13px 20px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .sandbox .lbl{font-size:12px;color:var(--dim);margin-right:4px}
+  .sandbox input{font-family:var(--mono);font-size:13px;background:#0c1119;border:1px solid #1a2331;color:var(--txt);
+    border-radius:7px;padding:7px 9px}
+  .sandbox input.name{width:120px}.sandbox input.amt{width:100px}
+  .note{font-size:12px;color:var(--dim);padding:0 20px 16px}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <div class="brand"><div class="logo">◆</div><div><b>Casefile</b><span>live engine test</span></div></div>
+      <div class="badge" id="clock">runs the same logic as the Lua core</div>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="run">▶ Run scenario</button>
+      <button id="reset">⟲ Reset</button>
+      <span class="sp"></span>
+      <span style="font-size:12px;color:var(--dim)">watch risk climb → case opens → dupe traced</span>
+    </div>
+
+    <div class="grid">
+      <div class="col"><h4>1 · live event stream</h4><div id="feed"></div></div>
+      <div class="col"><h4>2 · engine state (risk)</h4><div id="actors"></div>
+        <div class="dupe" id="dupe"><div class="hd" id="dupeHd"></div><div class="chain" id="dupeChain"></div></div>
+      </div>
+      <div class="col"><h4>3 · test checks</h4><div id="checks"></div>
+        <div class="result pass" id="result"></div></div>
+    </div>
+
+    <div class="sandbox">
+      <span class="lbl">Try it live:</span>
+      <input class="name" id="sbName" value="TestPlayer" title="actor">
+      <span class="lbl">sends</span>
+      <input class="amt" id="sbAmt" type="number" value="50000" title="amount">
+      <button id="sbGive">give money →</button>
+      <button id="sbDupe">spawn a dupe</button>
+      <span style="font-size:12px;color:var(--dim)">(2× $50k in the hour trips velocity → case opens)</span>
+    </div>
+    <div class="note">This page runs a faithful JavaScript mirror of Casefile's tested Lua core — the same
+      capture, watchtower rules, risk threshold, dupe detection and provenance. Nothing is pre-recorded; the engine computes it live.</div>
+  </div>
+
+<script>
+// ---------------- engine (mirror of server/core.lua, rules.lua, queries.lua) ----------------
+const THRESHOLD = 40;
+const ITEM_MOVES = {give_item:1,trade:1,sell:1,give:1};
+let store;
+function fresh(){ store = { events:[], assets:{}, custody:[], cases:[], risk:{},
+  rules:[
+    {key:'money_velocity', type:'money_velocity', window:3600, threshold:100000, severity:'high'},
+    {key:'off_hours', type:'off_hours', from_hour:2, to_hour:4, severity:'med'}
+  ] }; }
+const W = {high:40, med:20, low:10};
+
+function record(ev){
+  ev.ts = ev.ts ?? Math.floor(Date.now()/1000);
+  ev.id = store.events.length+1; ev.source = ev.source||'core';
+  store.events.push(ev);
+  if(ev.serial){
+    if(ev.action==='spawn_item'||ev.action==='spawn'){
+      if(!store.assets[ev.serial]) store.assets[ev.serial]={serial:ev.serial,origin_actor:ev.actor,origin_ts:ev.ts,spawns:0};
+      store.assets[ev.serial].spawns++;
+      store.custody.push({serial:ev.serial,from:null,to:ev.target||ev.actor,action:'spawn',ts:ev.ts});
+    } else if(ITEM_MOVES[ev.action]){
+      store.custody.push({serial:ev.serial,from:ev.actor,to:ev.target,action:ev.action,ts:ev.ts});
+    }
+  }
+  return ev;
+}
+function moneyOut(actor,since,now){ let s=0;
+  for(const e of store.events) if(e.category==='money'&&e.action==='give_money'&&e.actor===actor&&e.ts>=since&&e.ts<=now) s+=e.amount||0;
+  return s; }
+function evaluate(ev,now){ now=now??ev.ts; const trips=[];
+  for(const r of store.rules){
+    if(r.type==='money_velocity'&&ev.category==='money'&&ev.action==='give_money'){
+      const sum=moneyOut(ev.actor,now-r.window,now);
+      if(sum>=r.threshold) trips.push({rule:r.key,actor:ev.actor,severity:r.severity,weight:W[r.severity],detail:'$'+sum.toLocaleString()+' in '+(r.window/60)+'m'});
+    } else if(r.type==='off_hours'&&ev.category==='money'){
+      const h=new Date(ev.ts*1000).getUTCHours();
+      if(h>=r.from_hour&&h<r.to_hour) trips.push({rule:r.key,actor:ev.actor,severity:r.severity,weight:W[r.severity],detail:'off-hours'});
+    }
+  }
+  return trips;
+}
+function flag(trip){ let r=store.risk[trip.actor]; if(!r){r={score:0,reasons:[],case_id:null};store.risk[trip.actor]=r;}
+  r.score=Math.min(100,r.score+(trip.weight||20)); r.reasons.push(trip);
+  if(r.case_id){ store.cases.find(c=>c.id===r.case_id).risk=r.score; }
+  else if(r.score>=THRESHOLD){ const c={id:store.cases.length+1,subject:trip.actor,status:'open',risk:r.score,reasons:r.reasons}; store.cases.push(c); r.case_id=c.id; }
+  return r;
+}
+function search(f){ return store.events.filter(e=>(!f.actor||e.actor===f.actor)&&(!f.category||e.category===f.category)); }
+function provenance(serial){ return store.custody.filter(c=>c.serial===serial).slice().sort((a,b)=>a.ts-b.ts); }
+function currentHolders(serial){ const h={}; for(const c of provenance(serial)){ if(c.from)delete h[c.from]; if(c.to)h[c.to]=1; } return Object.keys(h).sort(); }
+function findDupes(){ const d=[]; for(const s in store.assets){ const h=currentHolders(s); if(h.length>1) d.push({serial:s,holders:h,origin:store.assets[s].origin_actor}); } return d; }
+
+// ---------------- UI ----------------
+const $=s=>document.querySelector(s), feed=$('#feed'), actorsEl=$('#actors');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const CHECKS=[
+  ['captured events', ()=>store.events.length>=7],
+  ['Jayden: 3 money events', ()=>search({actor:'Jayden_R',category:'money'}).length===3],
+  ['Mike: 1 money event', ()=>search({actor:'Mike_L',category:'money'}).length===1],
+  ['money-velocity tripped Jayden', ()=>trips.some(t=>t.rule==='money_velocity'&&t.actor==='Jayden_R')],
+  ['Mike did NOT trip velocity', ()=>!trips.some(t=>t.rule==='money_velocity'&&t.actor==='Mike_L')],
+  ['case opened on Jayden', ()=>store.cases.some(c=>c.subject==='Jayden_R')],
+  ['no false-positive case', ()=>store.cases.length===1],
+  ['1 duped serial found', ()=>findDupes().length===1],
+  ['dupe is pistol_9f2', ()=>{const d=findDupes()[0];return d&&d.serial==='pistol_9f2';}],
+  ['dupe held by 2 accounts', ()=>{const d=findDupes()[0];return d&&d.holders.length===2;}],
+  ['origin traced to Jayden_R', ()=>{const d=findDupes()[0];return d&&d.origin==='Jayden_R';}],
+  ['provenance has 3 hops', ()=>provenance('pistol_9f2').length===3],
+  ['provenance starts at spawn', ()=>{const c=provenance('pistol_9f2')[0];return c&&c.action==='spawn';}],
+];
+let trips=[];
+
+function renderChecks(){ $('#checks').innerHTML=CHECKS.map((c,i)=>`<div class="chk" data-c="${i}"><span class="bx">✓</span><span>${c[0]}</span></div>`).join(''); }
+function tickChecks(){ let pass=0; CHECKS.forEach((c,i)=>{ let ok=false; try{ok=c[1]();}catch(e){} if(ok){pass++;$(`[data-c="${i}"]`).classList.add('ok');} });
+  if(pass===CHECKS.length){ const r=$('#result'); r.textContent='RESULT: '+pass+'/'+CHECKS.length+' PASSED'; r.classList.add('show'); } return pass; }
+
+function ensureActor(name){
+  let el=document.getElementById('a_'+name);
+  if(!el){ el=document.createElement('div'); el.className='actor'; el.id='a_'+name;
+    el.innerHTML=`<div class="r"><span>${name}</span><span class="sc" id="sc_${name}">risk 0</span></div>
+      <div class="bar" id="bar_${name}"><i></i></div><span class="case" id="case_${name}">⚠ CASE OPENED</span>`;
+    actorsEl.appendChild(el); }
+  return el;
+}
+function paintActor(name){
+  const r=store.risk[name]||{score:0}; ensureActor(name);
+  const bar=$('#bar_'+name); bar.querySelector('i').style.width=r.score+'%'; bar.classList.toggle('hot',r.score>=THRESHOLD);
+  $('#sc_'+name).textContent='risk '+r.score;
+  if(store.cases.some(c=>c.subject===name)) $('#case_'+name).classList.add('show');
+}
+function addEvent(ev){
+  const cat=ev.category, txt = ev.category==='money'
+    ? `${ev.actor} gave $${(ev.amount||0).toLocaleString()} → ${ev.target}`
+    : `${ev.actor} ${ev.action.replace('_',' ')} ${ev.serial||''}${ev.target?(' → '+ev.target):''}`;
+  const t=new Date(ev.ts*1000).toISOString().substr(11,5);
+  const d=document.createElement('div'); d.className='ev '+cat; d.innerHTML=`<span class="t">${t}</span><span class="x">${txt}</span>`;
+  feed.prepend(d);
+}
+function ingest(ev){
+  record(ev); addEvent(ev);
+  for(const t of evaluate(ev,ev.ts)){ trips.push(t); flag(t); }
+  paintActor(ev.actor); tickChecks();
+}
+function showDupe(){
+  const d=findDupes()[0]; if(!d) return;
+  $('#dupeHd').textContent='⚠ dupe: '+d.serial+' · origin '+d.origin;
+  const chain=provenance(d.serial).map(c=>`<b>${c.from||'∅'}</b> → <b>${c.to}</b> <span style="color:var(--dim)">(${c.action})</span>`).join('<br>');
+  $('#dupeChain').innerHTML='holders: '+d.holders.join(', ')+'<br><br>custody:<br>'+chain;
+  $('#dupe').classList.add('show');
+}
+
+const T0 = Date.UTC(2026,0,5,2,14,0)/1000;
+const SCENARIO=[
+  {ts:T0-600, actor:'Mike_L', category:'money', action:'give_money', target:'Shop', amount:12},
+  {ts:T0,     actor:'Jayden_R', category:'money', action:'give_money', target:'Mike_L', amount:50000},
+  {ts:T0+1620,actor:'Jayden_R', category:'money', action:'give_money', target:'Dana_P', amount:50000},
+  {ts:T0+2940,actor:'Jayden_R', category:'money', action:'give_money', target:'Rob_T', amount:50000},
+  {ts:T0+3000,actor:'Jayden_R', category:'item', action:'spawn_item', serial:'pistol_9f2'},
+  {ts:T0+3300,actor:'Jayden_R', category:'item', action:'give_item', target:'Mike_L', serial:'pistol_9f2'},
+  {ts:T0+3360,actor:'Jayden_R', category:'item', action:'give_item', target:'BiggsY', serial:'pistol_9f2'},
+];
+
+let running=false, sbTs=T0+4000;
+function resetAll(){ fresh(); trips=[]; sbTs=T0+4000; feed.innerHTML=''; actorsEl.innerHTML='';
+  $('#dupe').classList.remove('show'); $('#result').classList.remove('show'); renderChecks(); }
+async function runScenario(){
+  if(running) return; running=true; $('#run').disabled=true; resetAll();
+  for(const ev of SCENARIO){ ingest({...ev}); await sleep(900); }
+  await sleep(300); showDupe(); tickChecks();
+  running=false; $('#run').disabled=false;
+}
+$('#run').addEventListener('click',runScenario);
+$('#reset').addEventListener('click',()=>{ if(!running) resetAll(); });
+$('#sbGive').addEventListener('click',()=>{
+  if(!store) resetAll();
+  const name=($('#sbName').value||'TestPlayer').trim();
+  const amt=parseInt($('#sbAmt').value)||0;
+  sbTs+=60; ingest({ts:sbTs, actor:name, category:'money', action:'give_money', target:'Player_X', amount:amt});
+});
+$('#sbDupe').addEventListener('click',()=>{
+  if(!store) resetAll();
+  const name=($('#sbName').value||'TestPlayer').trim(); const s='sn_'+Math.floor(Math.random()*900+100);
+  sbTs+=60; ingest({ts:sbTs, actor:name, category:'item', action:'spawn_item', serial:s});
+  sbTs+=60; ingest({ts:sbTs, actor:name, category:'item', action:'give_item', target:'BuyerA', serial:s});
+  sbTs+=60; ingest({ts:sbTs, actor:name, category:'item', action:'give_item', target:'BuyerB', serial:s});
+  showDupe();
+});
+resetAll();
+</script>
+</body>
+</html>

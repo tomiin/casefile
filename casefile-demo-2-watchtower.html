@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — Watchtower (demo 2)</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8;
+    --bad:#f0616d; --badbg:#241016; --warn:#f5b544; --warnbg:#241d0e;
+    --ok:#3ecf8e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .app{width:100%;max-width:1040px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .scrub{height:3px;background:#0b0f17}
+  .scrub i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px;letter-spacing:.3px}
+  .brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--mut)}
+  .live{display:flex;align-items:center;gap:6px;color:var(--ok)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+  .rec{display:flex;align-items:center;gap:6px;color:var(--bad);font-family:var(--mono);letter-spacing:.5px}
+  .rec i{width:8px;height:8px;border-radius:50%;background:var(--bad);animation:blink 1.2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #3ecf8e66}70%{box-shadow:0 0 0 7px #3ecf8e00}100%{box-shadow:0 0 0 0 #3ecf8e00}}
+  @keyframes blink{50%{opacity:.25}}
+  .body{padding:18px 20px}
+  .lbl{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);margin:0 0 12px;display:flex;justify-content:space-between}
+  .alert{display:flex;align-items:center;gap:10px;background:var(--badbg);border:1px solid #47222a;
+    color:#f6a3ac;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:14px;
+    opacity:0;transform:translateY(-8px);transition:.4s;height:0;padding-top:0;padding-bottom:0;overflow:hidden}
+  .alert.show{opacity:1;transform:none;height:auto;padding:11px 14px}
+  .alert b{color:#ff8a95}
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .rule{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:12px 14px;transition:.4s}
+  .rule.new{opacity:0;transform:translateY(10px)}
+  .rule.new.in{opacity:1;transform:none;border-color:#1c5450;box-shadow:0 0 0 1px #0c2b2a}
+  .rh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .nm{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px}
+  .sev{width:8px;height:8px;border-radius:50%}
+  .sev.high{background:var(--bad)}.sev.med{background:var(--warn)}
+  .cond{font-family:var(--mono);font-size:11px;color:var(--mut);margin:7px 0 4px}
+  .mrow{display:flex;justify-content:flex-end;font-size:10px;color:var(--dim);font-family:var(--mono);margin-bottom:4px}
+  .meter{height:9px;background:#0c1119;border:1px solid #161d29;border-radius:6px;position:relative;overflow:hidden}
+  .meter i{display:block;height:100%;width:8%;background:var(--accent);transition:width .7s ease;border-radius:6px}
+  .meter.hot i{background:var(--bad)}
+  .mark{position:absolute;top:-2px;bottom:-2px;left:80%;width:2px;background:#4a5568}
+  .pill{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .pill.armed{color:var(--accent);background:#0c2b2a;border:1px solid #1c5450}
+  .pill.tripped{color:#f6a3ac;background:var(--badbg);border:1px solid #47222a;animation:blink 1s infinite}
+  .bump{color:var(--warn);font-family:var(--mono);font-size:11px;opacity:0;transition:.25s}
+  .bump.show{opacity:1}
+  .composer{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px}
+  .composer h4{margin:0 0 10px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600;display:flex;align-items:center;gap:8px}
+  .prompt{font-family:var(--mono);font-size:13px;color:var(--txt);background:#0c1119;border:1px solid #1a2331;
+    border-radius:8px;padding:11px 13px;min-height:20px}
+  .prompt .caret{display:inline-block;width:7px;height:15px;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:blink 1s infinite}
+  .compile{margin-top:10px;font-size:12px;color:var(--mut);display:flex;align-items:center;gap:8px;opacity:0;transition:.3s}
+  .compile.show{opacity:1}
+  .spark{color:var(--accent2)}
+  .cap-bar{border-top:1px solid var(--line);background:#0b1017;padding:11px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);min-height:44px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+  .cap-bar.ok .dot{background:var(--ok)}.cap-bar.warn .dot{background:var(--warn)}
+  .cap-bar.bad .dot{background:var(--bad);animation:blink 1s infinite}.cap-bar.done .dot{background:var(--accent)}
+  .fade{transition:opacity .7s}.fade.out{opacity:0}
+  @media(max-width:760px){.rules{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="scrub"><i id="scrub"></i></div>
+    <div class="top">
+      <div class="brand"><div class="logo">◆</div><div><b>CASEFILE</b><span>watchtower · detection rules</span></div></div>
+      <div class="meta"><span>Los Santos RP · rank #1</span><span class="live"><i></i> LIVE</span><span class="rec"><i></i> DEMO LOOP</span></div>
+    </div>
+
+    <div class="body">
+      <div class="alert" id="alert"><span>⚠</span><span id="alertText"><b>Rule tripped.</b> Case opened automatically…</span></div>
+      <p class="lbl"><span>Active rules</span><span id="ruleCount">4 armed</span></p>
+      <div class="rules" id="rules"></div>
+
+      <div class="composer">
+        <h4><span class="spark">⚡</span> add a rule — just describe it</h4>
+        <div class="prompt" id="prompt"><span class="caret"></span></div>
+        <div class="compile" id="compile"><span class="spark">⚡</span><span id="compileText">Casefile compiled your rule.</span></div>
+      </div>
+    </div>
+
+    <div class="cap-bar" id="capBar"><span class="dot"></span><span id="caption">Initializing…</span></div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const capBar=$('#capBar'),caption=$('#caption'),alertEl=$('#alert'),app=$('.app');
+
+const baseRules=[
+  {key:'money',name:'Money velocity',cond:'moves > $100k within 1 hour',sev:'high',start:14},
+  {key:'dupe',name:'Item duplication',cond:'same serial seen twice',sev:'high',start:38},
+  {key:'teleport',name:'Impossible movement',cond:'jumps > 500m instantly',sev:'med',start:22},
+  {key:'trade',name:'Trade spam',cond:'> 5 trades in 10 seconds',sev:'med',start:30},
+];
+
+function ruleHTML(r,isNew){
+  return `<div class="rule${isNew?' new':''}" data-key="${r.key}">
+    <div class="rh"><div class="nm"><span class="sev ${r.sev}"></span>${r.name} <span class="bump" data-bump></span></div>
+      <span class="pill armed" data-pill>ARMED</span></div>
+    <div class="cond">${r.cond}</div>
+    <div class="mrow">limit</div>
+    <div class="meter"><span class="mark"></span><i data-fill style="width:${r.start}%"></i></div>
+  </div>`;
+}
+function say(t,s){caption.textContent=t;capBar.className='cap-bar '+s;}
+function setMeter(key,pct,hot){const r=$(`.rule[data-key="${key}"]`);const f=r.querySelector('[data-fill]');
+  f.style.width=Math.min(pct,100)+'%';r.querySelector('.meter').classList.toggle('hot',!!hot);}
+function trip(key){const r=$(`.rule[data-key="${key}"]`);const p=r.querySelector('[data-pill]');
+  p.textContent='TRIPPED';p.className='pill tripped';setMeter(key,100,true);}
+async function bump(key,txt){const r=$(`.rule[data-key="${key}"]`);const b=r.querySelector('[data-bump]');
+  b.textContent=txt;b.classList.add('show');await sleep(650);b.classList.remove('show');await sleep(120);}
+async function typePrompt(text){const el=$('#prompt');el.innerHTML='';
+  for(const ch of text){el.innerHTML=el.textContent+ch;await sleep(30);}
+  el.innerHTML=el.textContent+'<span class="caret"></span>';}
+function startScrub(dur){const s=$('#scrub');s.style.transition='none';s.style.width='0%';
+  requestAnimationFrame(()=>{s.style.transition=`width ${dur}ms linear`;s.style.width='100%';});}
+
+function render(){
+  $('#rules').innerHTML=baseRules.map(r=>ruleHTML(r,false)).join('');
+  $('#ruleCount').textContent='4 armed';
+  $('#prompt').innerHTML='<span class="caret"></span>';
+  $('#compile').classList.remove('show');
+  alertEl.classList.remove('show');
+  app.classList.remove('out');
+}
+
+async function run(){
+  while(true){
+    render();
+    startScrub(25000);
+    say('Rules armed — watching the live server','ok');
+    await sleep(1400);
+
+    say('Live events feeding the rules…','warn');
+    await sleep(600);
+    setMeter('teleport',34); setMeter('trade',48); await sleep(900);
+    await bump('money','+$50,000'); setMeter('money',46);
+    await bump('money','+$50,000'); setMeter('money',72);
+    setMeter('dupe',63); await sleep(500);
+    await bump('money','+$50,000'); setMeter('money',92);
+    await sleep(700);
+    await bump('money','+ dupe serial'); setMeter('money',100,true);
+
+    say('Money velocity crossed the limit — auto-tripping','bad');
+    trip('money');
+    await sleep(700);
+    $('#alertText').innerHTML='<b>Rule tripped:</b> money velocity → Case #0142 opened on Jayden_R';
+    alertEl.classList.add('show');
+    await sleep(2600);
+
+    say('Add a new rule — no code, just plain English','warn');
+    alertEl.classList.remove('show');
+    await sleep(500);
+    await typePrompt('flag anyone who sells the same car to 2+ buyers within 10 minutes');
+    await sleep(600);
+    $('#compileText').textContent='Casefile compiled it into a live rule — now watching.';
+    $('#compile').classList.add('show');
+    await sleep(900);
+
+    const nr={key:'resale',name:'Vehicle resale ring',cond:'sells same car to 2+ buyers in 10 min',sev:'high',start:12};
+    $('#rules').insertAdjacentHTML('beforeend',ruleHTML(nr,true));
+    $('#ruleCount').textContent='5 armed';
+    const el=$('.rule[data-key="resale"]');
+    await sleep(60); el.classList.add('in');
+    say('Casefile compiled your rule — the watchtower now enforces it','done');
+    await sleep(3400);
+
+    app.classList.add('fade','out');
+    await sleep(1100);
+  }
+}
+run();
+</script>
+</body>
+</html>

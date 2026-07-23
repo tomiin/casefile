@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — Connection web (demo 4)</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8;
+    --bad:#f0616d; --badbg:#241016; --warn:#f5b544;
+    --ok:#3ecf8e; --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .app{width:100%;max-width:1040px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .scrub{height:3px;background:#0b0f17}
+  .scrub i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent))}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px;letter-spacing:.3px}
+  .brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--mut)}
+  .live{display:flex;align-items:center;gap:6px;color:var(--ok)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+  .rec{display:flex;align-items:center;gap:6px;color:var(--accent2);font-family:var(--mono);letter-spacing:.5px}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #3ecf8e66}70%{box-shadow:0 0 0 7px #3ecf8e00}100%{box-shadow:0 0 0 0 #3ecf8e00}}
+  @keyframes blink{50%{opacity:.3}}
+  .body{padding:16px 20px 18px}
+  .lbl{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);margin:0 0 8px;display:flex;justify-content:space-between}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--mut);align-items:center}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .lk{width:16px;height:2px;border-radius:2px}.lk.grey{background:#3a4658}.lk.red{background:#e0555f}
+  svg{width:100%;height:auto;display:block;background:#0b1017;border:1px solid var(--line);border-radius:12px}
+  .edge{stroke:#3a4658;stroke-width:2;fill:none;stroke-dasharray:440;stroke-dashoffset:440;transition:stroke-dashoffset .7s ease,stroke .3s}
+  .edge.show{stroke-dashoffset:0}
+  .edge.r{stroke:#e0555f;stroke-width:2.4}
+  .edge.hi{stroke:#7ef0e0;stroke-width:3.2}
+  .node{cursor:pointer;opacity:0;transition:opacity .4s}
+  .node.show{opacity:1}
+  .node circle{fill:#16202e;stroke:#2c3a50;stroke-width:1.6}
+  .node.r circle{stroke:#e0555f;fill:#251218}
+  .node.sel circle{stroke:#2dd4bf;stroke-width:2.6}
+  .node text{fill:#c9d4e3;font-family:var(--mono);font-size:10px;font-weight:600;pointer-events:none}
+  .node.innocent circle{stroke:#2c3a50}
+  .elabel{fill:#a7dfff;font-family:var(--mono);font-size:11px;opacity:0;transition:.2s;pointer-events:none}
+  .elabel.show{opacity:1}
+  .halo{fill:none;stroke:#e0555f;stroke-width:1.2;opacity:0;transition:.5s}
+  .halo.show{opacity:.5;animation:blink 1.6s infinite}
+  .panel{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .verdict{flex:1;min-width:260px;border:1px solid #47222a;background:var(--badbg);border-radius:12px;
+    padding:12px 14px;opacity:0;transform:translateY(8px);transition:.5s}
+  .verdict.show{opacity:1;transform:none}
+  .verdict h4{margin:0 0 6px;font-size:13px;color:#ff8a95;font-weight:500}
+  .verdict p{margin:0;font-size:12px;color:#f0b6bc;line-height:1.55}
+  .detail{width:270px;border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:12px 14px}
+  .detail h4{margin:0 0 9px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .detail .who{font-size:14px;margin-bottom:8px}
+  .detail .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
+  .detail .row .k{color:var(--mut)}.detail .row .v{font-family:var(--mono)}
+  .detail .v.in{color:var(--ok)}.detail .v.out{color:var(--bad)}
+  .detail .flag{margin-top:9px;font-size:11px;font-family:var(--mono);padding:5px 9px;border-radius:6px;display:inline-block}
+  .detail .flag.ring{color:#f6a3ac;background:var(--badbg);border:1px solid #47222a}
+  .detail .flag.clean{color:#9fe1cb;background:#0c2b2a;border:1px solid #1c5450}
+  .hint{margin-top:11px;font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px}
+  .replay{margin-left:auto;font-size:12px;font-family:var(--mono);color:var(--accent);
+    border:1px solid #1c5450;background:#0c2b2a;border-radius:8px;padding:6px 11px;cursor:pointer}
+  .cap-bar{border-top:1px solid var(--line);background:#0b1017;padding:11px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);min-height:44px}
+  .dot2{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+  .cap-bar.ok .dot2{background:var(--ok)}.cap-bar.warn .dot2{background:var(--warn)}
+  .cap-bar.bad .dot2{background:var(--bad);animation:blink 1s infinite}.cap-bar.done .dot2{background:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="scrub"><i id="scrub"></i></div>
+    <div class="top">
+      <div class="brand"><div class="logo">◆</div><div><b>CASEFILE</b><span>connections · money-flow graph</span></div></div>
+      <div class="meta"><span>Los Santos RP · rank #1</span><span class="live"><i></i> LIVE</span><span class="rec">◇ INTERACTIVE</span></div>
+    </div>
+
+    <div class="body">
+      <p class="lbl"><span>Money flow — last hour</span>
+        <span class="legend"><span><i class="lk grey"></i>normal</span><span><i class="lk red"></i>ring / cycle</span></span></p>
+      <svg id="graph" viewBox="0 0 680 400" aria-label="money-flow connection graph">
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <g id="edges"></g><g id="labels"></g><g id="nodes"></g>
+      </svg>
+
+      <div class="panel">
+        <div class="verdict" id="verdict">
+          <h4>⚠ Laundering ring detected</h4>
+          <p id="verdictText"></p>
+        </div>
+        <div class="detail" id="detail">
+          <h4>Inspect</h4>
+          <div class="who" id="dWho">Click any account</div>
+          <div id="dRows"></div>
+          <div id="dFlag"></div>
+        </div>
+      </div>
+
+      <div class="hint"><span>◇ click a circle to trace that account's money in and out</span>
+        <span class="replay" id="replay">⟲ replay detection</span></div>
+    </div>
+
+    <div class="cap-bar" id="capBar"><span class="dot2"></span><span id="caption">Initializing…</span></div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const NS="http://www.w3.org/2000/svg";
+const capBar=$('#capBar'),caption=$('#caption');
+
+const nodes=[
+  {id:'kara', label:'KARA',   x:110,y:80,  r:18, ring:false},
+  {id:'jay',  label:'JAYDEN', x:200,y:220, r:26, ring:true},
+  {id:'mike', label:'MIKE',   x:345,y:105, r:20, ring:true},
+  {id:'dana', label:'DANA',   x:505,y:180, r:20, ring:true},
+  {id:'rob',  label:'ROB',    x:455,y:325, r:20, ring:true},
+  {id:'biggs',label:'BIGGSY', x:275,y:335, r:20, ring:true},
+  {id:'shop', label:'SHOP',   x:585,y:315, r:18, ring:false},
+];
+const edges=[
+  {f:'jay', t:'mike', amt:'$50k', n:50000, ring:true},
+  {f:'mike',t:'dana', amt:'$50k', n:50000, ring:true},
+  {f:'dana',t:'rob',  amt:'$50k', n:50000, ring:true},
+  {f:'rob', t:'biggs',amt:'$50k', n:50000, ring:true},
+  {f:'biggs',t:'jay', amt:'$45k', n:45000, ring:true},
+  {f:'kara',t:'jay',  amt:'$80',  n:80,    ring:false},
+  {f:'shop',t:'rob',  amt:'$60',  n:60,    ring:false},
+];
+const N=Object.fromEntries(nodes.map(n=>[n.id,n]));
+const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+function ends(e){const a=N[e.f],b=N[e.t];const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);
+  const ux=dx/L,uy=dy/L;return{x1:a.x+ux*(a.r+2),y1:a.y+uy*(a.r+2),x2:b.x-ux*(b.r+7),y2:b.y-uy*(b.r+7)};}
+function say(t,s){caption.textContent=t;capBar.className='cap-bar '+s;}
+
+function build(){
+  const ge=$('#edges'),gl=$('#labels'),gn=$('#nodes');
+  ge.innerHTML='';gl.innerHTML='';gn.innerHTML='';
+  edges.forEach((e,i)=>{
+    const p=ends(e);
+    const ln=el('line',{class:'edge',x1:p.x1,y1:p.y1,x2:p.x2,y2:p.y2,'marker-end':'url(#arr)','data-e':i,'data-f':e.f,'data-t':e.t});
+    if(e.ring)ln.setAttribute('data-ring','1');
+    ge.appendChild(ln);
+    const lb=el('text',{class:'elabel','data-lb':i,x:(p.x1+p.x2)/2,y:(p.y1+p.y2)/2-4,'text-anchor':'middle'});
+    lb.textContent=e.amt;gl.appendChild(lb);
+  });
+  nodes.forEach(n=>{
+    const g=el('g',{class:'node'+(n.ring?'':' innocent'),'data-id':n.id});
+    g.appendChild(el('circle',{class:'halo','data-halo':n.id,cx:n.x,cy:n.y,r:n.r+7}));
+    g.appendChild(el('circle',{cx:n.x,cy:n.y,r:n.r}));
+    const t=el('text',{x:n.x,y:n.y+4,'text-anchor':'middle'});t.textContent=n.label;g.appendChild(t);
+    g.addEventListener('click',()=>inspect(n.id));
+    gn.appendChild(g);
+  });
+}
+function startScrub(dur){const s=$('#scrub');s.style.transition='none';s.style.width='0%';
+  requestAnimationFrame(()=>{s.style.transition=`width ${dur}ms linear`;s.style.width='100%';});}
+
+function inspect(id){
+  $$('.node').forEach(n=>n.classList.toggle('sel',n.getAttribute('data-id')===id));
+  $$('.edge').forEach(e=>e.classList.remove('hi'));
+  $$('.elabel').forEach(l=>l.classList.remove('show'));
+  let inSum=0,outSum=0;
+  edges.forEach((e,i)=>{
+    if(e.f===id||e.t===id){
+      $(`[data-e="${i}"]`).classList.add('hi');
+      $(`[data-lb="${i}"]`).classList.add('show');
+      if(e.t===id)inSum+=e.n; if(e.f===id)outSum+=e.n;
+    }
+  });
+  const node=N[id];
+  $('#dWho').textContent=node.label+(node.ring?'':'  (bystander)');
+  const f=v=>'$'+v.toLocaleString();
+  $('#dRows').innerHTML=
+    `<div class="row"><span class="k">received</span><span class="v in">${f(inSum)}</span></div>
+     <div class="row"><span class="k">sent</span><span class="v out">${f(outSum)}</span></div>
+     <div class="row"><span class="k">net</span><span class="v">${f(inSum-outSum)}</span></div>`;
+  $('#dFlag').innerHTML=node.ring
+    ? '<span class="flag ring">◆ ring member — funds cycle back to origin</span>'
+    : '<span class="flag clean">✓ normal activity — not in the cycle</span>';
+}
+
+async function detect(){
+  build();
+  $('#verdict').classList.remove('show');
+  $('#dWho').textContent='Click any account';$('#dRows').innerHTML='';$('#dFlag').innerHTML='';
+  $$('.node').forEach(n=>n.classList.remove('sel'));
+  startScrub(7000);
+
+  say('Mapping money flows across the server…','warn');
+  const nodeEls=$$('.node');
+  for(const g of nodeEls){g.classList.add('show');await sleep(160);}
+  await sleep(300);
+  for(const e of $$('.edge')){e.classList.add('show');await sleep(220);}
+  await sleep(500);
+
+  say('Scanning for cycles — money that returns to its source','bad');
+  $$('.edge[data-ring="1"]').forEach(e=>e.classList.add('r'));
+  $$('.node.node:not(.innocent)').forEach(()=>{});
+  nodes.filter(n=>n.ring).forEach(n=>{
+    $(`.node[data-id="${n.id}"]`).classList.add('r');
+    $(`[data-halo="${n.id}"]`).classList.add('show');
+  });
+  await sleep(900);
+
+  $('#verdictText').innerHTML=
+    'A closed loop of 5 accounts moved <b>$245k</b> in 49 minutes, with funds returning to the origin (Jayden_R). '+
+    'Classic laundering signature — small legit payments from Kara and Shop are correctly excluded.';
+  $('#verdict').classList.add('show');
+  say('Ring found — click any account to trace its flows','done');
+}
+$('#replay').addEventListener('click',detect);
+detect();
+</script>
+</body>
+</html>

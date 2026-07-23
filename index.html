@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — server integrity suite for FiveM</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8; --bad:#f0616d; --warn:#f5b544; --ok:#3ecf8e;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.6}
+  a{color:inherit}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+  .nav{position:sticky;top:0;z-index:10;background:#0a0d14ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:500}
+  .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800}
+  .nav a.cta{font-size:13px;text-decoration:none;background:#0c2b2a;border:1px solid #1c5450;color:#7ef0e0;
+    padding:8px 14px;border-radius:8px}
+  /* hero */
+  .hero{text-align:center;padding:76px 0 60px;border-bottom:1px solid var(--line);
+    background:radial-gradient(900px 400px at 50% -10%, #16283a55, transparent)}
+  .hero .kick{font-family:var(--mono);font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--accent)}
+  .hero h1{font-size:44px;line-height:1.12;margin:16px auto 14px;max-width:760px;font-weight:600;letter-spacing:-.5px}
+  .hero p{font-size:18px;color:var(--mut);max-width:620px;margin:0 auto 28px}
+  .hero .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{text-decoration:none;font-size:14px;padding:12px 20px;border-radius:10px;border:1px solid var(--line);color:var(--txt);background:#131a25}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121a;font-weight:600;border:none}
+  /* problem strip */
+  .strip{padding:48px 0;border-bottom:1px solid var(--line);text-align:center}
+  .strip h2{font-size:26px;font-weight:600;margin:0 0 10px}
+  .strip p{color:var(--mut);max-width:640px;margin:0 auto;font-size:16px}
+  /* feature sections */
+  .feat{padding:56px 0;border-bottom:1px solid var(--line)}
+  .feat .tag{font-family:var(--mono);font-size:12px;color:var(--accent2);letter-spacing:.5px}
+  .feat h3{font-size:28px;font-weight:600;margin:8px 0 10px}
+  .feat p.lead{color:var(--mut);max-width:640px;font-size:16px;margin:0 0 24px}
+  .demo{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#0b0f17}
+  .demo iframe{width:100%;height:700px;border:0;display:block}
+  .demo .bar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);
+    background:#0d121b;font-family:var(--mono);font-size:12px;color:var(--dim)}
+  .demo .bar i{width:10px;height:10px;border-radius:50%;background:#2a3342}
+  .demo .bar i.g{background:#f5b544}.demo .bar i.h{background:#3ecf8e}
+  .open{display:inline-block;margin-top:12px;font-size:13px;font-family:var(--mono);color:var(--accent);text-decoration:none}
+  /* pricing */
+  .pricing{padding:60px 0;border-bottom:1px solid var(--line)}
+  .pricing h2{text-align:center;font-size:28px;font-weight:600;margin:0 0 8px}
+  .pricing .sub{text-align:center;color:var(--mut);margin:0 0 34px}
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .tier{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px 20px}
+  .tier.hot{border-color:#1c5450;box-shadow:0 0 0 1px #0c2b2a}
+  .tier h4{margin:0 0 4px;font-size:18px}
+  .tier .price{font-family:var(--mono);font-size:22px;margin:6px 0 14px}
+  .tier .price small{font-size:12px;color:var(--dim)}
+  .tier ul{list-style:none;padding:0;margin:0;font-size:14px}
+  .tier li{padding:6px 0;color:var(--mut);display:flex;gap:9px}
+  .tier li b{color:var(--txt);font-weight:400}
+  .tier li::before{content:"✓";color:var(--accent)}
+  .tier li.off{color:var(--dim)}.tier li.off::before{content:"—";color:var(--dim)}
+  .tier .tcta{display:block;text-align:center;text-decoration:none;margin-top:16px;padding:10px;border-radius:9px;
+    font-size:14px;border:1px solid var(--line);color:var(--txt)}
+  .tier.hot .tcta{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121a;font-weight:600;border:none}
+  /* positioning + footer */
+  .note{padding:44px 0;border-bottom:1px solid var(--line);text-align:center}
+  .note p{max-width:660px;margin:0 auto;color:var(--mut);font-size:16px}
+  .note b{color:var(--txt);font-weight:500}
+  footer{padding:48px 0 60px;text-align:center;color:var(--dim);font-size:13px}
+  footer .fbtns{display:flex;gap:12px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+  @media(max-width:760px){.hero h1{font-size:32px}.tiers{grid-template-columns:1fr}.demo iframe{height:560px}}
+</style>
+</head>
+<body>
+  <nav class="nav"><div class="wrap">
+    <div class="brand"><span class="logo">◆</span> Casefile</div>
+    <a class="cta" href="https://marketplace.cfx.re/">Get it on Cfx »</a>
+  </div></nav>
+
+  <header class="hero"><div class="wrap">
+    <div class="kick">server integrity suite · FiveM</div>
+    <h1>Stop scrolling logs. Start investigating.</h1>
+    <p>Casefile captures every money move, item transfer, and admin action — then turns it
+      into searchable cases, auto-flags, and evidence you can act on in seconds.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://marketplace.cfx.re/">Get Pro / Elite</a>
+      <a class="btn" href="#demos">Watch the demos ↓</a>
+    </div>
+  </div></header>
+
+  <section class="strip"><div class="wrap">
+    <h2>Your logs already exist. You just can't <em>use</em> them.</h2>
+    <p>Discord log channels are a firehose you scroll for twenty minutes and still miss things.
+      Casefile stores the same events in your own database and makes them searchable, connected,
+      and self-flagging — so "what did this player actually do?" takes seconds, not an evening.</p>
+  </div></section>
+
+  <div id="demos"></div>
+
+  <section class="feat"><div class="wrap">
+    <div class="tag">01 · case files</div>
+    <h3>Every investigation, auto-assembled</h3>
+    <p class="lead">Open a player and the case is already built — risk score, flags, the money
+      timeline, connections, and one-click evidence export.</p>
+    <div class="demo">
+      <div class="bar"><i></i><i class="g"></i><i class="h"></i> casefile — case dossier</div>
+      <iframe src="casefile-demo.html" title="Case file demo" loading="lazy"></iframe>
+    </div>
+    <a class="open" href="casefile-demo.html" target="_blank">open full demo ↗</a>
+  </div></section>
+
+  <section class="feat"><div class="wrap">
+    <div class="tag">02 · watchtower</div>
+    <h3>Detection rules that trip on their own</h3>
+    <p class="lead">Plain-English rules watch the live server and open cases automatically —
+      and you add new ones just by describing them — Casefile's AI-powered composer turns plain English into live rules.</p>
+    <div class="demo">
+      <div class="bar"><i></i><i class="g"></i><i class="h"></i> casefile — watchtower</div>
+      <iframe src="casefile-demo-2-watchtower.html" title="Watchtower demo" loading="lazy"></iframe>
+    </div>
+    <a class="open" href="casefile-demo-2-watchtower.html" target="_blank">open full demo ↗</a>
+  </div></section>
+
+  <section class="feat"><div class="wrap">
+    <div class="tag">03 · provenance</div>
+    <h3>Trace any dupe to its source</h3>
+    <p class="lead">Follow an item's full chain of custody backward until the duplication event
+      reveals itself — then patch, roll back, and ban the source.</p>
+    <div class="demo">
+      <div class="bar"><i></i><i class="g"></i><i class="h"></i> casefile — provenance</div>
+      <iframe src="casefile-demo-3-provenance.html" title="Provenance demo" loading="lazy"></iframe>
+    </div>
+    <a class="open" href="casefile-demo-3-provenance.html" target="_blank">open full demo ↗</a>
+  </div></section>
+
+  <section class="feat"><div class="wrap">
+    <div class="tag">04 · connections</div>
+    <h3>Laundering rings, on a red-string board</h3>
+    <p class="lead">Money flow as a live graph. Cycles that return to their origin light up as
+      rings — click any account to trace what it sent and received. <b>Interactive.</b></p>
+    <div class="demo">
+      <div class="bar"><i></i><i class="g"></i><i class="h"></i> casefile — connections (click the nodes)</div>
+      <iframe src="casefile-demo-4-connections.html" title="Connection web demo" loading="lazy"></iframe>
+    </div>
+    <a class="open" href="casefile-demo-4-connections.html" target="_blank">open full demo ↗</a>
+  </div></section>
+
+  <section class="pricing"><div class="wrap">
+    <h2>Simple pricing</h2>
+    <p class="sub">Your data, your database, one purchase. No per-log fees.</p>
+    <div class="tiers">
+      <div class="tier">
+        <h4>Lite</h4>
+        <div class="price">Free</div>
+        <ul>
+          <li><b>Event capture</b> (ESX / QBCore)</li>
+          <li><b>Search panel</b></li>
+          <li><b>Discord mirror</b></li>
+          <li class="off">Auto-flags</li>
+          <li class="off">Case files</li>
+          <li class="off">Provenance &amp; rings</li>
+        </ul>
+        <a class="tcta" href="https://github.com/tomiin/casefile">Get on GitHub</a>
+      </div>
+      <div class="tier hot">
+        <h4>Pro</h4>
+        <div class="price">$34.99<small> one-time</small></div>
+        <ul>
+          <li>Everything in Lite</li>
+          <li><b>Watchtower auto-flags</b></li>
+          <li><b>Auto-built case files</b></li>
+          <li><b>Evidence export</b></li>
+          <li><b>AI rule authoring</b></li>
+          <li class="off">Provenance &amp; rings</li>
+        </ul>
+        <a class="tcta" href="https://marketplace.cfx.re/">Get Pro</a>
+      </div>
+      <div class="tier">
+        <h4>Elite</h4>
+        <div class="price">$74.99<small> one-time</small></div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li><b>Item provenance</b></li>
+          <li><b>Connection web</b></li>
+          <li><b>Staff-abuse auditing</b></li>
+          <li><b>Economy rewind</b></li>
+        </ul>
+        <a class="tcta" href="https://marketplace.cfx.re/">Get Elite</a>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="note"><div class="wrap">
+    <p><b>Casefile works alongside your stack.</b> It isn't an anticheat and doesn't replace
+      txAdmin — it sits on top of them and answers what they can't: <em>what actually happened,
+      and who did it.</em> It can even ingest events from your anticheat and txAdmin so
+      everything lands in one searchable place.</p>
+  </div></section>
+
+  <footer><div class="wrap">
+    <div class="fbtns">
+      <a class="btn primary" href="https://marketplace.cfx.re/">Get it on Cfx Marketplace</a>
+      <a class="btn" href="https://github.com/tomiin/casefile">Free Lite on GitHub</a>
+    </div>
+    <div>◆ Casefile by Shima Interactive — built for FiveM server owners. Not affiliated with Rockstar Games or Cfx.re.</div>
+  </div></footer>
+</body>
+</html>

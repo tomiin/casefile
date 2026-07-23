@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casefile — server integrity suite (demo)</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111722; --panel2:#0e131c; --line:#1e2735;
+    --txt:#e6edf3; --mut:#8b96a7; --dim:#5b6577;
+    --accent:#2dd4bf; --accent2:#38bdf8;
+    --bad:#f0616d; --badbg:#241016; --warn:#f5b544; --warnbg:#241d0e;
+    --ok:#3ecf8e;
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%, #12203055, transparent), var(--bg);
+    color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;
+  }
+  .app{width:100%;max-width:1040px;background:linear-gradient(180deg,#0f1520,#0b0f17);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -30px #000}
+  .scrub{height:3px;background:#0b0f17}
+  .scrub i{display:block;height:100%;width:0;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:0 3px 3px 0}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;
+    border-bottom:1px solid var(--line);background:#0d121b}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;color:#04121a;font-weight:800;font-size:14px}
+  .brand b{font-size:15px;letter-spacing:.3px}
+  .brand span{display:block;font-size:11px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  .meta{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--mut)}
+  .live{display:flex;align-items:center;gap:6px;color:var(--ok)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+  .rec{display:flex;align-items:center;gap:6px;color:var(--bad);font-family:var(--mono);letter-spacing:.5px}
+  .rec i{width:8px;height:8px;border-radius:50%;background:var(--bad);animation:blink 1.2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #3ecf8e66}70%{box-shadow:0 0 0 7px #3ecf8e00}100%{box-shadow:0 0 0 0 #3ecf8e00}}
+  @keyframes blink{50%{opacity:.25}}
+  .grid{display:grid;grid-template-columns:320px 1fr;min-height:520px}
+  .left{border-right:1px solid var(--line);background:var(--panel2);padding:16px 16px 18px}
+  .right{padding:18px 20px;position:relative}
+  .lbl{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);margin:0 0 12px}
+  #feed{display:flex;flex-direction:column;gap:8px}
+  .ev{display:flex;gap:10px;align-items:baseline;font-size:13px;padding:8px 10px;border-radius:8px;
+    background:#0c1119;border:1px solid #161d29;animation:slideIn .35s ease}
+  .ev .t{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:38px}
+  .ev .x{color:var(--mut)}
+  .ev.warn{border-color:#3a2f16;background:#161206}.ev.warn .x{color:#e9c07a}
+  .ev.bad{border-color:#3a1a1e;background:#1a0c0f}.ev.bad .x{color:#f0919a}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .alert{display:flex;align-items:center;gap:10px;background:var(--badbg);border:1px solid #47222a;
+    color:#f6a3ac;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:16px;
+    opacity:0;transform:translateY(-8px);transition:.4s}
+  .alert.show{opacity:1;transform:none}
+  .alert b{color:#ff8a95}
+  .case{border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    opacity:.26;filter:saturate(.4);transition:.6s;position:relative;overflow:hidden}
+  .case.live{opacity:1;filter:none;border-color:#28405a;box-shadow:0 0 0 1px #1a2c40,0 20px 50px -30px #000}
+  .case.scan::after{content:"";position:absolute;top:0;left:-45%;width:45%;height:100%;
+    background:linear-gradient(90deg,transparent,#2dd4bf1f,transparent);animation:sweep 1s linear infinite;pointer-events:none}
+  @keyframes sweep{to{left:130%}}
+  .caseHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .caseHead .who{display:flex;align-items:center;gap:11px}
+  .folder{width:30px;height:30px;border-radius:8px;background:#16202e;border:1px solid #26344a;
+    display:flex;align-items:center;justify-content:center;font-size:15px}
+  .caseHead .who b{font-size:14px}
+  .caseHead .who small{display:block;color:var(--dim);font-size:11px;font-family:var(--mono)}
+  .score{display:flex;align-items:center;gap:9px}
+  .score .ring{position:relative;width:44px;height:44px}
+  .score svg{transform:rotate(-90deg)}
+  .score .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-weight:700;font-size:15px}
+  .score .cap{font-size:11px;color:var(--bad);text-transform:uppercase;letter-spacing:.6px}
+  .flags{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px 4px}
+  .flag{font-size:12px;font-family:var(--mono);padding:6px 10px;border-radius:7px;opacity:0;transform:scale(.9);transition:.3s}
+  .flag.show{opacity:1;transform:none}
+  .flag.bad{color:#f6a3ac;background:var(--badbg);border:1px solid #47222a}
+  .flag.warn{color:#e9c07a;background:var(--warnbg);border:1px solid #3a2f16}
+  .cbody{display:grid;grid-template-columns:1fr 300px;gap:14px;padding:14px 16px}
+  .box{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .box h4{margin:0 0 11px;font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .tl{display:flex;flex-direction:column;gap:9px}
+  .tl .row{display:flex;gap:10px;font-size:13px;opacity:0;transform:translateX(-6px);transition:.3s}
+  .tl .row.show{opacity:1;transform:none}
+  .tl .tm{font-family:var(--mono);font-size:11px;color:var(--dim);min-width:42px}
+  .amt{color:var(--accent)}.dup{color:var(--bad)}
+  .web svg{width:100%;height:auto;display:block}
+  .wire{stroke:#e0555f;stroke-width:1.6;stroke-dasharray:200;stroke-dashoffset:200;transition:stroke-dashoffset .6s ease;opacity:.85}
+  .wire.show{stroke-dashoffset:0}
+  .node circle{fill:#16202e;stroke:#2c3a50;stroke-width:1.4;opacity:0;transition:.4s}
+  .node.show circle{opacity:1}
+  .node.hot circle{fill:#251218;stroke:#5a2730}
+  .node.hot.show circle{animation:hot 2s ease-in-out infinite}
+  @keyframes hot{50%{stroke:#f0616d}}
+  .node text{fill:#c9d4e3;font-family:var(--mono);font-size:10px;opacity:0;transition:.4s}
+  .node.show text{opacity:1}
+  .cluster{fill:#f0919a;font-family:var(--mono);font-size:10px;opacity:0;transition:.5s}
+  .cluster.show{opacity:1}
+  .acts{display:flex;gap:9px;flex-wrap:wrap;padding:6px 16px 16px}
+  .btn{font-size:13px;padding:8px 13px;border-radius:8px;border:1px solid var(--line);
+    background:#111925;color:var(--mut);display:flex;align-items:center;gap:7px;cursor:default}
+  .btn.p{background:#0c2b2a;border-color:#1c5450;color:#7ef0e0}
+  .btn.d{border-color:#452027;color:#f0919a;background:#170c0f}
+  .btn.pulse{animation:btnp 1.4s infinite}
+  @keyframes btnp{0%,100%{box-shadow:0 0 0 0 #2dd4bf00}50%{box-shadow:0 0 0 4px #2dd4bf22}}
+  .cap-bar{border-top:1px solid var(--line);background:#0b1017;padding:11px 20px;
+    display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);min-height:44px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--mut);flex:none}
+  .cap-bar.ok .dot{background:var(--ok)}.cap-bar.warn .dot{background:var(--warn)}
+  .cap-bar.bad .dot{background:var(--bad);animation:blink 1s infinite}.cap-bar.done .dot{background:var(--accent)}
+  .fade{transition:opacity .7s}.fade.out{opacity:0}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}.left{border-right:none;border-bottom:1px solid var(--line)}.cbody{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="scrub"><i id="scrub"></i></div>
+    <div class="top">
+      <div class="brand">
+        <div class="logo">◆</div>
+        <div><b>CASEFILE</b><span>server integrity suite</span></div>
+      </div>
+      <div class="meta">
+        <span>Los Santos RP · rank #1</span>
+        <span class="live"><i></i> LIVE</span>
+        <span class="rec"><i></i> DEMO LOOP</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="left">
+        <p class="lbl">Live activity</p>
+        <div id="feed"></div>
+      </div>
+
+      <div class="right">
+        <div class="alert" id="alert"><span>⚠</span><span><b>Anomaly detected.</b> Auto-assembling case file…</span></div>
+        <div class="case" id="case">
+          <div class="caseHead">
+            <div class="who">
+              <div class="folder">🗂</div>
+              <div><b id="caseName">Case — · —</b><small id="caseSub">standing by</small></div>
+            </div>
+            <div class="score">
+              <div class="ring">
+                <svg width="44" height="44"><circle cx="22" cy="22" r="18" fill="none" stroke="#1e2735" stroke-width="4"/>
+                <circle id="arc" cx="22" cy="22" r="18" fill="none" stroke="#f0616d" stroke-width="4"
+                  stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113"/></svg>
+                <div class="num" id="score">0</div>
+              </div>
+              <div class="cap">risk</div>
+            </div>
+          </div>
+          <div class="flags" id="flags"></div>
+          <div class="cbody">
+            <div class="box"><h4>Timeline</h4><div class="tl" id="tl"></div></div>
+            <div class="box web"><h4>Connections</h4>
+              <svg viewBox="0 0 280 170" aria-label="connection web"><g id="web"></g></svg>
+            </div>
+          </div>
+          <div class="acts">
+            <div class="btn p" id="exportBtn">📤 export evidence packet</div>
+            <div class="btn">⟲ rewind economy</div>
+            <div class="btn d">⊘ ban with evidence</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cap-bar" id="capBar"><span class="dot"></span><span id="caption">Initializing…</span></div>
+  </div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const NS="http://www.w3.org/2000/svg";
+const feed=$('#feed'),capBar=$('#capBar'),caption=$('#caption'),caseEl=$('#case'),alertEl=$('#alert'),app=$('.app');
+const CENTER={x:140,y:88,r:24}, SPOKES=[{x:52,y:40,r:18},{x:232,y:52,r:18},{x:150,y:150,r:18}];
+
+const scenarios=[
+  {
+    id:'#0142', name:'Jayden_R', sub:'auto-generated · SteveMod', score:87,
+    normal:[['01:58','Mike_L bought coffee ($12)'],['02:03','Dana_P repaired vehicle ($350)'],['02:09','Rob_T clocked in — mechanic']],
+    sus:[['02:14','Jayden_R gave $50,000 → Mike_L','warn'],['02:41','Jayden_R gave $50,000 → Dana_P','warn'],
+         ['03:03','Jayden_R gave $50,000 → Rob_T','warn'],['03:19','Jayden_R spawned pistol_9f2','bad']],
+    flags:[['money velocity · $150k / 49 min','bad'],['duplicate serial · pistol_9f2','bad'],['off-hours · 02:00–04:00','warn']],
+    tl:[['02:14','gave <span class="amt">$50,000</span> → Mike_L'],['02:41','gave <span class="amt">$50,000</span> → Dana_P'],
+        ['03:03','gave <span class="amt">$50,000</span> → Rob_T'],['03:19','spawned <span class="dup">pistol_9f2</span> (dupe)']],
+    center:'JAYDEN', spokes:['MIKE','DANA','ROB'], cluster:'◆ cluster flagged: possible ring',
+    cap:{mon:'Monitoring server activity — all normal',pat:'Unusual pattern forming…',det:'Anomaly detected — building case automatically',
+         trail:'Reconstructing the money trail…',ready:'Evidence packet ready — one click to export'}
+  },
+  {
+    id:'#0143', name:'admin: RiotMod', sub:'staff audit · flagged by system', score:94,
+    normal:[['21:02','Server backup completed'],['21:05','EMS_Kara revived a player'],['21:07','148 players online']],
+    sus:[['21:14','RiotMod spawned $250,000 → self','warn'],['21:15','RiotMod gave $250,000 → BiggsY','warn'],
+         ['21:16','RiotMod spawned adder ×3 → BiggsY','bad'],['21:18','RiotMod cleared own action log','bad']],
+    flags:[['admin self-enrichment','bad'],['log tampering attempt','bad'],['non-standard grants','warn']],
+    tl:[['21:14','spawned <span class="amt">$250,000</span> → self'],['21:15','gave <span class="amt">$250,000</span> → BiggsY'],
+        ['21:16','spawned <span class="dup">adder ×3</span> → BiggsY'],['21:18','cleared own <span class="dup">action log</span>']],
+    center:'RIOTMOD', spokes:['BIGGSY','ADDER×3','LOGS'], cluster:'◆ staff abuse flagged',
+    cap:{mon:'Monitoring staff actions — all normal',pat:'Admin acting outside policy…',det:'Abuse detected — building staff case',
+         trail:'Tracing the admin’s grants…',ready:'Evidence packet ready — one click to export'}
+  }
+];
+
+function addEvent(t,x,cls=''){
+  const el=document.createElement('div'); el.className='ev '+cls;
+  el.innerHTML=`<span class="t">${t}</span><span class="x">${x}</span>`;
+  feed.prepend(el); while(feed.children.length>8) feed.lastChild.remove();
+}
+function say(txt,state){ caption.textContent=txt; capBar.className='cap-bar '+state; }
+
+function buildFlags(sc){ const f=$('#flags'); f.innerHTML='';
+  sc.flags.forEach(([t,c])=>{const s=document.createElement('span');s.className='flag '+c;s.setAttribute('data-f','');s.textContent=t;f.appendChild(s);}); }
+function buildTl(sc){ const tl=$('#tl'); tl.innerHTML='';
+  sc.tl.forEach(([tm,html])=>{const r=document.createElement('div');r.className='row';r.setAttribute('data-r','');
+    r.innerHTML=`<span class="tm">${tm}</span><span>${html}</span>`;tl.appendChild(r);}); }
+function svgEl(tag,attrs){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+function buildWeb(sc){
+  const web=$('#web'); web.innerHTML='';
+  sc.spokes.forEach((sp,i)=>{const c=SPOKES[i];
+    web.appendChild(svgEl('line',{x1:CENTER.x,y1:CENTER.y,x2:c.x,y2:c.y,class:'wire','data-w':''})); });
+  const mk=(cx,cy,r,label,hot)=>{const g=svgEl('g',{class:'node'+(hot?' hot':''),'data-n':''});
+    g.appendChild(svgEl('circle',{cx,cy,r}));
+    const t=svgEl('text',{x:cx,y:cy+4,'text-anchor':'middle'});t.textContent=label;g.appendChild(t);web.appendChild(g);};
+  mk(CENTER.x,CENTER.y,CENTER.r,sc.center,true);
+  sc.spokes.forEach((sp,i)=>{const c=SPOKES[i];mk(c.x,c.y,c.r,sp,false);});
+  const ct=svgEl('text',{class:'cluster','data-c':'',x:140,y:15,'text-anchor':'middle'});ct.textContent=sc.cluster;web.appendChild(ct);
+}
+
+function reset(){
+  feed.innerHTML=''; alertEl.classList.remove('show');
+  caseEl.classList.remove('live','scan');
+  $('#score').textContent='0'; $('#arc').setAttribute('stroke-dashoffset','113');
+  $$('[data-f],[data-r],[data-w],[data-n],[data-c]').forEach(e=>e.classList.remove('show'));
+  $('#exportBtn').classList.remove('pulse'); app.classList.remove('out');
+}
+async function animateScore(target){
+  const num=$('#score'),arc=$('#arc'),full=113;
+  for(let v=0;v<=target;v+=Math.max(1,Math.ceil(target/40))){const vv=Math.min(v,target);
+    num.textContent=vv; arc.setAttribute('stroke-dashoffset',full-full*(vv/100)); await sleep(26);}
+  num.textContent=target;
+}
+function startScrub(dur){ const s=$('#scrub'); s.style.transition='none'; s.style.width='0%';
+  requestAnimationFrame(()=>{ s.style.transition=`width ${dur}ms linear`; s.style.width='100%'; }); }
+
+async function run(){
+  let si=0;
+  while(true){
+    const sc=scenarios[si]; si=(si+1)%scenarios.length;
+    buildFlags(sc); buildTl(sc); buildWeb(sc); reset();
+    $('#caseName').textContent='Case '+sc.id+' · —'; $('#caseSub').textContent='standing by';
+    const dur=800+sc.normal.length*1050+sc.sus.length*1000+1300+500+1150+sc.flags.length*470+sc.tl.length*430+(350+sc.spokes.length*430)+3200;
+    startScrub(dur);
+
+    say(sc.cap.mon,'ok'); await sleep(800);
+    for(const e of sc.normal){ addEvent(e[0],e[1]); await sleep(1050); }
+    say(sc.cap.pat,'warn');
+    for(const e of sc.sus){ addEvent(e[0],e[1],e[2]||''); await sleep(1000); }
+
+    say(sc.cap.det,'bad'); alertEl.classList.add('show'); await sleep(1300);
+    caseEl.classList.add('live','scan');
+    $('#caseName').textContent='Case '+sc.id+' · '+sc.name; $('#caseSub').textContent=sc.sub;
+    await sleep(500); await animateScore(sc.score); caseEl.classList.remove('scan');
+
+    for(const f of $$('[data-f]')){ f.classList.add('show'); await sleep(470); }
+    say(sc.cap.trail,'bad');
+    for(const r of $$('[data-r]')){ r.classList.add('show'); await sleep(430); }
+
+    const nodes=$$('[data-n]'), wires=$$('[data-w]');
+    nodes[0].classList.add('show'); await sleep(350);
+    for(let i=1;i<nodes.length;i++){ if(wires[i-1])wires[i-1].classList.add('show'); nodes[i].classList.add('show'); await sleep(430); }
+    await sleep(250); $('[data-c]').classList.add('show');
+
+    say(sc.cap.ready,'done'); $('#exportBtn').classList.add('pulse'); await sleep(3200);
+    app.classList.add('fade','out'); await sleep(1100);
+  }
+}
+run();
+</script>
+</body>
+</html>
