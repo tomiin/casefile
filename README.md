@@ -84,31 +84,4 @@ before you rely on it commercially._
 
 ---
 
-## Repo structure — how the code is protected
-
-This **public** repository contains **only the Lite Edition** — deliberately limited to
-capture + search. The valuable features live elsewhere:
-
-```
-casefile/                  ← THIS public repo (Lite only)
-├── README.md
-├── LICENSE
-├── fxmanifest.lua
-├── config.lua
-├── casefile.sql
-└── lite/                  ← capture hooks + search panel only
-
-casefile-full/  (PRIVATE)  ← never published; your real source
-                             watchtower, provenance, connection web,
-                             case engine, rewind, staff-audit
-
-Cfx Marketplace listing     ← paid build, shipped ENCRYPTED via
-                             Asset Escrow (buyers run it, can't read it)
-```
-
-Rule of thumb: **if a feature is worth paying for, it never touches this public repo.**
-The Lite Edition is marketing — a working taste that funnels to the locked paid build.
-
----
-
 Built by **Shima Interactive** · [github.com/tomiin](https://github.com/tomiin)
