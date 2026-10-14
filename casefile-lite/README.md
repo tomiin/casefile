@@ -6,9 +6,12 @@ Stop scrolling Discord logs — store your server's activity in your own databas
 > This is the free **Lite** edition. **Pro** (auto-flags, case files, evidence export) and
 > **Elite** (item provenance, connection web, staff-audit, rewind) are on the **Cfx Marketplace**.
 
-> **Status — early release.** The capture pipeline, search, schema and the `exports.casefile:log`
-> API are built and unit-tested. Native ESX/QBCore auto-hooks are being finalized — for now,
-> feed events via the `log` export (see below) or your own event bindings. Feedback welcome.
+> **Status — beta.** Verified on a live FiveM server (Linux, MySQL 8.4 over SSL): events sent through
+> `exports.casefile:log` are batched into MySQL and found again by `casefile search`, and data survives
+> restarts. Auto-capture is also wired for **QBCore money** (`OnMoneyChange`), **item gives**
+> (ox_inventory hook) and **sessions** (connect/disconnect), but those hooks are **not yet tested on a
+> live server** — they're built against the documented APIs. **ESX money** has no broadcast event, so
+> capture it via the `log` export from your money code. Bug reports welcome.
 
 ## What Lite does
 - Captures money, item, admin, session events (ESX/QBCore auto-detected)

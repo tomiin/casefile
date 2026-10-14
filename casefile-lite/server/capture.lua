@@ -1,12 +1,18 @@
 --[[
   Casefile Lite — capture.lua  (FiveM layer)
-  Wires framework/server events into the tested core, persists to MySQL, and
-  mirrors to Discord. Any script/anticheat/txAdmin bridge can push events via
-  exports.casefile:log(event).
+  Wires real framework events into the tested core, resolves player identifiers,
+  persists to MySQL, and mirrors admin actions to Discord. Uses verified APIs:
+    - QBCore money:  QBCore:Server:OnMoneyChange(src, type, amount, op, reason)
+    - items:         ox_inventory registerHook('swapItems') + post-hook
+    - sessions:      playerConnecting / playerDropped (core FiveM events)
+    - universal:     exports.casefile:log(event)  (any script/anticheat/txAdmin)
+
+  NOTE: ESX has no clean money event — ESX money capture goes through the export
+  below (call exports.casefile:log from your paycheck/transfer code). Validated
+  on a live server (VPS step), not the offline harness, which proves the mappers.
 ]]
 
 local Core = Casefile.core
-local Q    = Casefile.queries
 local DB   = Casefile.db
 
 local store = { events = {} }   -- lightweight recent-activity mirror
@@ -27,7 +33,17 @@ function Casefile.discord(msg)
     json.encode({ content = msg }), { ['Content-Type'] = 'application/json' })
 end
 
--- the single ingest point everything flows through
+-- resolve a stable identifier for a player source (license preferred)
+local function pid(src)
+  if not src or src == 0 then return 'console' end
+  local lic = GetPlayerIdentifierByType and GetPlayerIdentifierByType(src, 'license')
+  return lic or ('src:' .. tostring(src))
+end
+local function pname(src)
+  return (src and src ~= 0 and GetPlayerName(src)) or 'console'
+end
+
+-- single ingest point
 local function ingest(ev)
   ev.source = ev.source or 'core'
   Core.record(store, ev)
@@ -39,19 +55,45 @@ local function ingest(ev)
 end
 exports('log', function(ev) return ingest(ev) end)
 
--- example hooks (extend per framework / your own events)
-if FW == 'esx' then
-  RegisterNetEvent('casefile:internal:money', function(target, amount)
-    ingest{ actor = tostring(source), category = 'money', action = 'give_money',
-            target = tostring(target), amount = amount }
+-- ── money (QBCore: real event) ─────────────────────────────────────────────
+if FW == 'qbcore' then
+  AddEventHandler('QBCore:Server:OnMoneyChange', function(src, moneyType, amount, operation, reason)
+    ingest(Core.fromMoneyChange(pid(src), pname(src), moneyType, amount, operation, reason))
   end)
 end
-RegisterNetEvent('casefile:internal:admin', function(action, target)
-  ingest{ actor = tostring(source), category = 'admin', action = action,
-          target = target and tostring(target) or nil }
+-- ESX money: no broadcast event — call exports.casefile:log from your money code,
+-- e.g. exports.casefile:log({ actor = id, category='money', action='give_money', amount=n })
+
+-- ── items (ox_inventory: real hook + post-hook) ────────────────────────────
+if GetResourceState('ox_inventory') == 'started' then
+  local hookId = exports.ox_inventory:registerHook('swapItems', nil, {})
+  AddEventHandler(hookId, function(success, payload)
+    if not success or not payload then return end
+    -- capture transfers/gives (moves within one's own inventory are noise)
+    if payload.action == 'give' then
+      ingest(Core.fromItemSwap(pid(payload.source), payload))
+    end
+  end)
+end
+
+-- ── sessions (core FiveM events) ───────────────────────────────────────────
+AddEventHandler('playerConnecting', function(name)
+  local src = source
+  local lic = (GetPlayerIdentifierByType and GetPlayerIdentifierByType(src, 'license')) or ('src:' .. src)
+  ingest(Core.fromSession(lic, name, 'connect', { discord = GetPlayerIdentifierByType and GetPlayerIdentifierByType(src, 'discord') }))
+end)
+AddEventHandler('playerDropped', function(reason)
+  local src = source
+  ingest(Core.fromSession(pid(src), pname(src), 'disconnect', { reason = reason }))
 end)
 
--- Lite search command (Pro/Elite replace this with an in-game NUI panel)
+-- ── admin (generic; bind your admin menu / txAdmin here) ───────────────────
+RegisterNetEvent('casefile:internal:admin', function(action, target)
+  local src = source
+  ingest(Core.fromAdmin(pid(src), pname(src), action, target and tostring(target) or nil))
+end)
+
+-- ── Lite search command (Pro/Elite replace with an in-game NUI panel) ──────
 RegisterCommand('casefile', function(src, args)
   if args[1] == 'search' then
     DB.search({ actorLike = args[2], category = args[3] }, function(rows)
