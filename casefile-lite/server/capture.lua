@@ -88,9 +88,22 @@ AddEventHandler('playerDropped', function(reason)
 end)
 
 -- ── admin (generic; bind your admin menu / txAdmin here) ───────────────────
-RegisterNetEvent('casefile:internal:admin', function(action, target)
-  local src = source
-  ingest(Core.fromAdmin(pid(src), pname(src), action, target and tostring(target) or nil))
+-- SERVER-SIDE ONLY: deliberately NOT a network event, so a player's client can never forge audit
+-- entries. Call it from server scripts (your admin menu / txAdmin bridge):
+--   exports.casefile:logAdmin(adminSrc, 'give_money', targetLicenseOrNil)
+--   (adminSrc = the admin's server id, or a 'license:...' string)
+local function logAdmin(admin, action, target, detail)
+  if type(action) ~= 'string' then return false end
+  local id, name
+  if type(admin) == 'string' and admin:find(':', 1, true) then id, name = admin, admin
+  else id, name = pid(tonumber(admin)), pname(tonumber(admin)) end
+  ingest(Core.fromAdmin(id, name, action, target and tostring(target) or nil, type(detail) == 'table' and detail or nil))
+  return true
+end
+exports('logAdmin', logAdmin)
+-- A plain AddEventHandler (not RegisterNetEvent) cannot be triggered from a client, only from server scripts.
+AddEventHandler('casefile:internal:admin', function(admin, action, target, detail)
+  logAdmin(admin, action, target, detail)
 end)
 
 -- ── Lite search command (Pro/Elite replace with an in-game NUI panel) ──────
